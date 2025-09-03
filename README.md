@@ -1,54 +1,195 @@
-# my-finance-bot
-The "Personal Finance Chatbot" project aims to develop an intelligent conversational AI system that leverages IBM's generative AI models and Watson services to provide personalized financial guidance. 
-Personal Finance Assistant
-🚀 Project Overview
-This is a single-file, responsive web application built with React that serves as a personal finance assistant. The app is designed to help users manage their finances through an interactive chatbot, a budget calculator, and a financial goal tracker. The entire application is self-contained within a single React component, making it lightweight and easy to deploy.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Finance Chatbot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
 
-✨ Features
-Interactive Chatbot: A simple, rule-based chatbot provides instant financial advice on topics such as saving, budgeting, debt, and investing. The responses are tailored based on the user's profile (student or professional).
+    /* Gradient background */
+    body {
+      background: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
+    }
 
-Budget Calculator: A utility to help users track their income and expenses, calculate their monthly leftover income, and determine their savings rate.
+    /* Custom scrollbar */
+    #chat-box::-webkit-scrollbar {
+      width: 8px;
+    }
+    #chat-box::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    #chat-box::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+    #chat-box::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
 
-Financial Goal Tracker: A tool to help users set and track progress toward financial goals, providing a progress bar and motivational messages.
+    /* Fade-in animation */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out;
+    }
 
-Responsive Design: The application is fully responsive, ensuring a seamless experience on both desktop and mobile devices.
+    /* Typing dots animation */
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .dot {
+      animation: bounce 0.6s infinite;
+      display: inline-block;
+      margin-right: 2px;
+    }
+    .dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const loader = document.getElementById('loader');
 
-🛠️ Technologies Used
-React: The core JavaScript library for building the user interface.
+        // IMPORTANT: Paste your free Google Gemini API key here
+        const gemini_api_key = "AIzaSyAsLLXuEdZIwraj0PNqOaMcpsgvddR42uk"; // Your Google Gemini API Key here
 
-Vite: The build tool used to create and run the project.
+        // Function to create and append a chat message element
+        function addMessage(text, isUser) {
+            const messageContainer = document.createElement('div');
+            messageContainer.className = isUser ? 'flex justify-end' : 'flex justify-start';
 
-Tailwind CSS: A utility-first CSS framework for rapid and consistent styling. All styles are included inline within the component.
+            const messageBubble = document.createElement('div');
+            messageBubble.className = isUser
+                ? 'bg-purple-100 text-gray-800 p-4 rounded-t-2xl rounded-r-2xl rounded-bl-2xl max-w-[85%] shadow-md'
+                : 'bg-gray-200 text-gray-800 p-4 rounded-t-2xl rounded-l-2xl rounded-br-2xl max-w-[85%] shadow-md';
+            
+            messageBubble.innerHTML = `<p>${text}</p>`;
 
-Lucide React: A set of beautiful and customizable open-source icons used throughout the interface.
+            messageContainer.appendChild(messageBubble);
+            chatBox.appendChild(messageContainer);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
-📦 Getting Started
-Prerequisites
-To run this project, you need to have Node.js installed on your machine.
+        // Function to call the Google Gemini API
+        async function getGeminiResponse(prompt) {
+            if (!gemini_api_key) {
+                addMessage("Please add your Gemini API key to the code to use the chatbot.", false);
+                return;
+            }
 
-Installation
-Clone the Repository
+            loader.classList.remove('hidden'); // Show loader
+            chatBox.scrollTop = chatBox.scrollHeight;
 
-git clone [https://github.com/your-username/my-finance-app.git](https://github.com/your-username/my-finance-app.git)
-cd my-finance-app
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${gemini_api_key}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: "You are a helpful AI assistant for personal finance, providing advice on savings, taxes, and investments. Keep your answers concise and easy to understand for students and young professionals." }] },
+            };
 
-Install Dependencies
-The app uses a few dependencies listed in package.json. Run the following command to install them:
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-npm install
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
 
-Run the Application
-After the dependencies are installed, you can start the development server with this command:
+                const result = await response.json();
+                const botResponse = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (botResponse) {
+                    addMessage(botResponse, false);
+                } else {
+                    addMessage("Sorry, I could not generate a response. Please try again later.", false);
+                }
+            } catch (error) {
+                console.error('Error fetching response from API:', error);
+                addMessage("I'm having trouble connecting to the service. Please check your API key and try again.", false);
+            } finally {
+                loader.classList.add('hidden'); // Hide loader
+            }
+        }
 
-npm run dev
+        // Event listener for the send button
+        sendBtn.addEventListener('click', () => {
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage(message, true);
+                userInput.value = '';
+                getGeminiResponse(message);
+            }
+        });
 
-The application will be available at http://localhost:5173 (or another port if 5173 is in use).
+        // Event listener for the Enter key in the input field
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+    });
+</script>
+</head>
+<body class="h-screen w-screen overflow-hidden">
 
-📂 Code Structure
-The entire application is a single React component located in src/App.jsx. This approach was chosen to demonstrate a fully functional, self-contained web app without the need for separate files or a complex build process. The styles are included within a <style> tag inside the component itself.
+<div class="w-screen h-screen bg-white shadow-2xl flex flex-col overflow-hidden">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <div class="p-2 rounded-full bg-white/20">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      </div>
+      <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold">Personal Finance Bot</h1>
+    </div>
+  </header>
 
-🤝 Contributing
-This project is a great starting point for anyone learning React. Feel free to fork the repository and improve on the existing features or add new ones!
+  <!-- Chat messages -->
+  <div id="chat-box" class="flex-1 p-6 overflow-y-auto space-y-5">
+    <div class="flex justify-start animate-fade-in">
+      <div class="bg-gray-200 text-gray-800 p-4 rounded-t-2xl rounded-r-2xl rounded-bl-2xl max-w-[85%] shadow-md">
+        <p>Hello! I'm your personal finance assistant. I can help you with questions about savings, taxes, and investments. How can I help you today?</p>
+      </div>
+    </div>
+    <div id="loader" class="flex justify-start hidden animate-fade-in">
+      <div class="bg-gray-200 text-gray-800 p-4 rounded-t-2xl rounded-r-2xl rounded-bl-2xl max-w-[85%] shadow-md">
+        <p><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></p>
+      </div>
+    </div>
+  </div>
 
-📄 License
-This project is licensed under the MIT License.
+  <!-- Input bar -->
+  <div class="p-6 bg-white border-t border-gray-200 flex items-center sticky bottom-0 z-10">
+    <input id="user-input" type="text" placeholder="Type your message..." class="flex-1 p-4 md:p-5 text-sm md:text-base lg:text-lg rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-200" />
+    <button id="send-btn" class="ml-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-full hover:from-purple-700 hover:to-indigo-700 transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
+      </svg>
+    </button>
+  </div>
+</div>
+
+</body>
+</html>
